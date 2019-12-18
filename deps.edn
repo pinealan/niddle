@@ -5,7 +5,6 @@
                   :main-opts [
                               "-m" "nrepl.cmdline"
                               "--middleware" "[needleware.print/print-eval]"
-                              "--verbose"
                               ]
                   }
            }}
