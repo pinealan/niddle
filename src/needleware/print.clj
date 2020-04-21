@@ -1,38 +1,57 @@
 (ns needleware.print
   (:require
-    [clojure.pprint :refer [pprint]]
-    [nrepl.middleware :refer [set-descriptor!]]
-    [nrepl.transport :refer [Transport]]))
+   [clojure.edn :as edn]
+   [nrepl.middleware :refer [set-descriptor!]]
+   [nrepl.middleware.print :refer [wrap-print]]
+   [nrepl.transport :refer [Transport]]
+   [puget.printer :as pug]))
 
-(defn print-value [{value :value :as response}]
-  (.println System/out (str "\033[32m" value "\033[m"))
-  response)
+(def pug-options
+  {:color-scheme {:number [:bold :blue]
+                  :string [:green]
+                  :keyword [:magenta]}})
 
-(defn print-code [code]
-  (println (str "\033[31m" code "\033[m")))
+(defn- unsafe-cprint
+  ([form] (.println System/out (pug/cprint-str form pug-options)))
+  ([prefix form] (.println System/out (str prefix (pug/cprint-str form pug-options)))))
 
-(defn print-value-transport
-  [transport]
+(defn- do-print-all
+  [msg response]
+  (do
+    ;(.println System/out "-----Evaluate-----")
+    (unsafe-cprint (str (:ns msg) "=> ") (let [code (:code msg)] (if (string? code) (edn/read-string code) code)))
+    (unsafe-cprint (:value response))
+    ;(.println System/out "-----Debug-----")
+    ;(unsafe-cprint msg)
+    ;(unsafe-cprint response)
+    nil))
+
+(defn- print-value-transport
+  [{:keys [transport] :as msg}]
   (reify Transport
     (recv [this]
       (.recv transport))
     (recv [this timeout]
       (.recv transport timeout))
     (send [this response]
-      (.send transport (print-value response))
+      (if (and (:value response) (:ns msg) (:code msg))
+        (do-print-all msg response))
+      (.send transport response)
       this)))
 
 (defn print-eval
   "Server middleware to print the :code and response :value from \"eval\" :op-eration."
-  [h]
-  (fn [msg]
-    (if (= (:op msg) "eval")
-      (let [{:keys [transport code]} msg]
-        (print-code code)
-        (h (assoc msg :transport (print-value-transport transport))))
-      (h msg))))
+  [handler]
+  (fn [{:keys [op] :as msg}]
+    (if (= op "eval")
+      (handler (assoc msg :transport (print-value-transport msg)))
+      (handler msg))))
 
 (set-descriptor! #'print-eval
-                 {:requires #{}
+                 {:requires #{#'wrap-print}
                   :expects #{"eval"}
                   :handles {}})
+
+(comment
+  (+ 1 2 3)
+  (assoc {:a 1 :b 2} :c 3))
