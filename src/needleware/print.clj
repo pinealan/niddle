@@ -15,18 +15,20 @@
   ([form] (.println System/out (pug/cprint-str form pug-options)))
   ([prefix form] (.println System/out (str prefix (pug/cprint-str form pug-options)))))
 
-(defn- do-print-all
+(defn- do-print-eval
   [msg response]
   (do
-    ;(.println System/out "-----Evaluate-----")
     (unsafe-cprint
-      (str (:ns response) "=> ")
-      (let [code (:code msg)] (if (string? code) (edn/read-string code) code)))
-    (unsafe-cprint (:value response))
-    ;(.println System/out "-----Debug-----")
-    ;(unsafe-cprint msg)
-    ;(unsafe-cprint response)
-    nil))
+     (str (:ns response) "=> ")
+     (let [code (:code msg)] (if (string? code) (edn/read-string code) code)))
+    (unsafe-cprint (:value response))))
+
+(defn- do-print-debug
+  [msg response]
+  (do
+    (.println System/out "----- Debug -----")
+    (unsafe-cprint (dissoc msg :session :transport))
+    (unsafe-cprint (dissoc response :session :value))))
 
 (defn- print-value-transport
   [{:keys [transport] :as msg}]
@@ -37,8 +39,9 @@
       (.recv transport timeout))
     (send [this response]
       (when
-        (and (:code msg) (:value response))
-        (do-print-all msg response))
+       (and (:code msg) (:value response))
+        (do-print-eval msg response))
+      #_(do-print-debug msg response)
       (.send transport response)
       this)))
 
@@ -57,5 +60,4 @@
 
 (comment
   (+ 1 2 3)
-  (assoc {:a 1 :b 2} :c 3)
-  nil)
+  (assoc {:a 1 :b 2} :c 3))
