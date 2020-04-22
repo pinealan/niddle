@@ -19,7 +19,9 @@
   [msg response]
   (do
     ;(.println System/out "-----Evaluate-----")
-    (unsafe-cprint (str (:ns msg) "=> ") (let [code (:code msg)] (if (string? code) (edn/read-string code) code)))
+    (unsafe-cprint
+      (str (:ns response) "=> ")
+      (let [code (:code msg)] (if (string? code) (edn/read-string code) code)))
     (unsafe-cprint (:value response))
     ;(.println System/out "-----Debug-----")
     ;(unsafe-cprint msg)
@@ -34,7 +36,8 @@
     (recv [this timeout]
       (.recv transport timeout))
     (send [this response]
-      (if (and (:value response) (:ns msg) (:code msg))
+      (when
+        (and (:code msg) (:value response))
         (do-print-all msg response))
       (.send transport response)
       this)))
@@ -54,4 +57,5 @@
 
 (comment
   (+ 1 2 3)
-  (assoc {:a 1 :b 2} :c 3))
+  (assoc {:a 1 :b 2} :c 3)
+  nil)

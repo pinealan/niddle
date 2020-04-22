@@ -1,11 +1,11 @@
 {:paths ["src"]
+
  :deps {org.clojure/clojure {:mvn/version "1.10.1"}
         nrepl {:mvn/version "0.7.0"}
         mvxcvi/puget {:mvn/version "1.2.1"}}
+
  :aliases {:dev {:main-opts ["-m" "nrepl.cmdline"
                              "--middleware" "[needleware.print/print-eval]"]}
-           :dev-client {:main-opts ["-m" "nrepl.cmdline"
-                                    "--middleware" "[needleware.print/print-eval]" "-i"]}
            :dev-cider {:extra-deps {cider/cider-nrepl {:mvn/version "0.22.4"}}
                        :main-opts ["-m" "nrepl.cmdline"
                                    "--middleware" "[cider.nrepl/cider-middleware,needleware.print/print-eval]"]}}}
