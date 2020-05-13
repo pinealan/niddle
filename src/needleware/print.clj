@@ -30,18 +30,19 @@
     (unsafe-cprint "Request: "  (dissoc msg :session :transport))
     (unsafe-cprint "Response: " (dissoc response :session :value))))
 
+(defn- extract-form [{:keys [code]}] (if (string? code) (edn/read-string code) code))
+(defn- first-form [form] (if (seq? form) (first form) form))
+(defn- useful? [form] (-> form first-form resolve (not= #'in-ns)))
+
 (defn- print-value-transport
   [{:keys [transport] :as msg}]
   (reify Transport
     (recv [this] (.recv transport))
     (recv [this timeout] (.recv transport timeout))
     (send [this response]
-      (when-let [code (:code msg)]
-        (if (string? code)
-          (let [form (edn/read-string code)]
-            (when (-> form first resolve (not= #'in-ns))
-              (cprint-eval form response)))
-          (cprint-eval code response)))
+      (when-let [form (extract-form msg)]
+        (when (useful? form)
+          (cprint-eval form response)))
       (when *debug* (cprint-debug msg response))
       (.send transport response)
       this)))
@@ -60,11 +61,6 @@
                   :handles {}})
 
 (comment
-  (cond
-    (= op "eval") (handler (assoc msg :transport (print-value-transport msg)))
-    (= op "load-file") (handler (assoc msg :transport (print-value msg)))
-    (handler msg))
-
   (+ 1 2 3)
   (+ 123 (+ 1 2 (- 4 3)))
   (assoc {:a 1 :b 2} :c 3))
