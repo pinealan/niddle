@@ -28,11 +28,12 @@
   (do
     (.println System/out "----- Debug -----")
     (unsafe-cprint "Request: "  (dissoc msg :session :transport))
-    (unsafe-cprint "Response: " (dissoc response :session :value))))
+    (unsafe-cprint "Response: " (dissoc response :session))))
 
 (defn- extract-form [{:keys [code]}] (if (string? code) (edn/read-string code) code))
-(defn- first-form [form] (if (seq? form) (first form) form))
-(defn- useful? [form] (-> form first-form resolve (not= #'in-ns)))
+(defn- print-form? [form]
+  (or (and (symbol? form) (not= form #'*ns*))
+      (and (list? form) (-> form first resolve (not= #'in-ns)))))
 
 (defn- print-value-transport
   [{:keys [transport] :as msg}]
@@ -40,10 +41,11 @@
     (recv [this] (.recv transport))
     (recv [this timeout] (.recv transport timeout))
     (send [this response]
-      (when-let [form (extract-form msg)]
-        (when (useful? form)
-          (cprint-eval form response)))
-      (when *debug* (cprint-debug msg response))
+      (when (contains? (:nrepl.middleware.print/keys response) :value)
+        (when-let [form (extract-form msg)]
+          (when (print-form? form)
+                (cprint-eval form response)))
+        (when *debug* (cprint-debug msg response)))
       (.send transport response)
       this)))
 
