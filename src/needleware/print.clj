@@ -29,8 +29,8 @@
     (unsafe-cprint "Request: "  (dissoc msg :session :transport))
     (unsafe-cprint "Response: " (dissoc response :session))))
 
-(defn- extract-form [{:keys [code]}] (if (string? code) (read-string code) code))
-(defn- print-form? [form]
+(defn extract-form [{:keys [code]}] (if (string? code) (read-string code) code))
+(defn print-form? [form]
   (or (and (symbol? form) (not= form '*ns*))
       (and (list? form) (-> form first resolve (not= #'in-ns)))))
 
