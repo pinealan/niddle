@@ -19,7 +19,7 @@
 (defn- cprint-eval
   [form response]
   (do
-    (unsafe-cprint (str (:ns response) "=> ") form)
+    (unsafe-cprint (str (:ns response) \u001b \[ "32;32" \m "=> " ) form)
     (unsafe-cprint (:value response))))
 
 (defn- cprint-debug
@@ -64,4 +64,6 @@
 (comment
   (+ 1 2 3)
   (+ 123 (+ 1 2 (- 4 3)))
-  (assoc {:a 1 :b 2} :c 3))
+  (assoc {:a 1 :b 2} :c 3)
+  *ns*
+  )
