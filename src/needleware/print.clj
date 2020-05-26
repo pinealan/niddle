@@ -6,8 +6,9 @@
    [puget.printer :as pug]))
 
 (def pug-options
-  {:color-scheme {:number [:bold :blue]
+  {:color-scheme {:number [:yellow]
                   :string [:green]
+                  :delimiter [:red]
                   :keyword [:magenta]}})
 
 (def ^:dynamic *debug* false)
@@ -19,7 +20,7 @@
 (defn- cprint-eval
   [form response]
   (do
-    (unsafe-cprint (str (:ns response) \u001b \[ "32;32" \m "=> " ) form)
+    (unsafe-cprint (str (:ns response) \u001b \[ "34" \m " => " ) form)
     (unsafe-cprint (:value response))))
 
 (defn- cprint-debug
@@ -32,7 +33,8 @@
 (defn extract-form [{:keys [code]}] (if (string? code) (read-string code) code))
 (defn print-form? [form]
   (or (and (symbol? form) (not= form '*ns*))
-      (and (list? form) (-> form first resolve (not= #'in-ns)))))
+      (and (list? form) (-> form first resolve (not= #'in-ns)))
+      (and (-> form symbol? not) (-> form list? not))))
 
 (defn- print-value-transport
   [{:keys [transport] :as msg}]
