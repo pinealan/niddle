@@ -1,5 +1,6 @@
 (ns needleware.print
   (:require
+   [clojure.string :refer [index-of]]
    [nrepl.middleware :refer [set-descriptor!]]
    [nrepl.middleware.print :refer [wrap-print]]
    [nrepl.transport :refer [Transport]]
@@ -14,13 +15,21 @@
 (def ^:dynamic *debug* false)
 
 (defn- unsafe-cprint
-  ([form] (.println System/out (pug/cprint-str form pug-options)))
-  ([prefix form] (.println System/out (str prefix (pug/cprint-str form pug-options)))))
+  ([form]
+   (.println System/out (pug/cprint-str form pug-options)))
+  ([prefix form]
+   (.println
+    System/out
+    (let [cstr (pug/cprint-str form pug-options)]
+      (str prefix
+           (if (index-of cstr "\n")
+             (str "...\n" cstr)
+             cstr))))))
 
 (defn- cprint-eval
   [form response]
   (do
-    (unsafe-cprint (str (:ns response) \u001b \[ "34" \m " => " ) form)
+    (unsafe-cprint (str (:ns response) \u001b "[34m => ") form)
     (unsafe-cprint (:value response))))
 
 (defn- cprint-debug
@@ -45,7 +54,7 @@
       (when (contains? (:nrepl.middleware.print/keys response) :value)
         (when-let [form (extract-form msg)]
           (when (print-form? form)
-                (cprint-eval form response)))
+            (cprint-eval form response)))
         (when *debug* (cprint-debug msg response)))
       (.send transport response)
       this)))
