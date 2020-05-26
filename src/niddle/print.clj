@@ -1,4 +1,4 @@
-(ns needleware.print
+(ns niddle.print
   (:require
    [clojure.string :refer [index-of]]
    [nrepl.middleware :refer [set-descriptor!]]

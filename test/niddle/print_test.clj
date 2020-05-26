@@ -1,7 +1,7 @@
-(ns needleware.print-test
+(ns niddle.print-test
   (:require
    [clojure.test :refer :all]
-   [needleware.print :refer :all]))
+   [niddle.print :refer :all]))
 
 (deftest extract-form-test
   (is (= (extract-form {:code '(identity 1)}) '(identity 1)))
