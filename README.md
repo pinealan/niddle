@@ -8,3 +8,13 @@ eval-ed on the same CLI. (think [Cursive
 REPL](https://cursive-ide.com/userguide/repl.html))
 
 Colored pretty printing is done with [puget](https://github.com/greglook/puget).
+
+## Usage
+
+```edn
+{...
+ :aliases
+ {:niddle {:extra-deps {org.clojure/clojure {:mvn/version "1.10.1"}
+                        niddle {:git/url "https://github.com/pinealan/niddle.git" }}
+           :main-opts ["-m" "nrepl.cmdline" "--middleware" "[niddle.print/print-eval]"]}
+```
