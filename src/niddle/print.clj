@@ -53,6 +53,7 @@
     (send [this response]
       (when (contains? (:nrepl.middleware.print/keys response) :value)
         (when-let [form (extract-form msg)]
+          (when *debug* (unsafe-cprint "Extracted form: " form))
           (when (print-form? form)
             (cprint-eval form response)))
         (when *debug* (cprint-debug msg response)))
