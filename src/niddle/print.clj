@@ -14,13 +14,19 @@
 
 (def ^:dynamic *debug* false)
 
+(defn try-cpr-str [form]
+  (try
+    (pug/cprint-str form pug-options)
+    (catch Throwable t
+      (str t "\n...eval was successful, but color printing failed."))))
+
 (defn- unsafe-cprint
   ([form]
-   (.println System/out (pug/cprint-str form pug-options)))
+   (.println System/out (try-cpr-str form)))
   ([prefix form]
    (.println
     System/out
-    (let [cstr (pug/cprint-str form pug-options)]
+    (let [cstr (try-cpr-str form)]
       (str prefix
            (if (index-of cstr "\n")
              (str "...\n" cstr)
@@ -40,12 +46,15 @@
     (unsafe-cprint "Response: " (dissoc response :session))))
 
 (defn extract-form [{:keys [code]}] (if (string? code) (read-string code) code))
+
 (defn print-form? [form]
+  "Skip functions & symbols that are unnecessary outside of interactive REPL"
   (or (and (symbol? form) (not= form '*ns*))
       (and (list? form) (-> form first resolve (not= #'in-ns)))
       (and (-> form symbol? not) (-> form list? not))))
 
 (defn- print-value-transport
+  "Reify transport to catpure eval-ed values for printing"
   [{:keys [transport] :as msg}]
   (reify Transport
     (recv [this] (.recv transport))
@@ -78,4 +87,4 @@
   (+ 123 (+ 1 2 (- 4 3)))
   (assoc {:a 1 :b 2} :c 3)
   *ns*
-  )
+  (extract-form {:code "#(identity %)"}))
