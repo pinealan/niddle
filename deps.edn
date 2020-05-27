@@ -5,7 +5,7 @@
         mvxcvi/puget {:mvn/version "1.2.1"}}
 
  :aliases {:dev {:main-opts ["-m" "nrepl.cmdline"
-                             "--middleware" "[needleware.print/print-eval]"]}
+                             "--middleware" "[niddle.print/print-eval]"]}
            :dev-cider {:extra-deps {cider/cider-nrepl {:mvn/version "0.22.4"}}
                        :main-opts ["-m" "nrepl.cmdline"
-                                   "--middleware" "[cider.nrepl/cider-middleware,needleware.print/print-eval]"]}}}
+                                   "--middleware" "[cider.nrepl/cider-middleware,niddle.print/print-eval]"]}}}
