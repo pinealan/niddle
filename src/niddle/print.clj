@@ -47,10 +47,12 @@
 
 (defn extract-form [{:keys [code]}] (if (string? code) (read-string code) code))
 
+(def skippable-sym #{'in-ns 'find-ns '*ns*})
+
 (defn print-form? [form]
   "Skip functions & symbols that are unnecessary outside of interactive REPL"
-  (or (and (symbol? form) (not= form '*ns*))
-      (and (list? form) (-> form first resolve (not= #'in-ns)))
+  (or (and (symbol? form) (->> form (contains? skippable-sym) not))
+      (and (list? form) (->> form flatten (not-any? skippable-sym)))
       (and (-> form symbol? not) (-> form list? not))))
 
 (defn- print-value-transport

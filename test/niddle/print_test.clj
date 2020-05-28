@@ -21,7 +21,11 @@
          1, :key, "str", [1 2 3], #{1 2 3}, {:a 5 :b 6}, 's, '(func arg)))
   (testing "Forms that should not be printed"
     (are [form] (not (print-form? form))
-         '(in-ns foo) '*ns*)))
+         '(in-ns foo) '*ns*))
+  (testing "Do not print forms that deeply contains skippable symbol"
+    (is (not (print-form? '(find-ns (quote niddle.print)))))
+    (is (not (print-form? '(if (find-ns (quote niddle.print)) :ok :ng))))
+    ))
 
 (comment
   (run-all-tests)
