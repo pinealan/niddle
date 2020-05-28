@@ -19,16 +19,17 @@
     (catch Throwable t
       (str t "\n...eval was successful, but color printing failed."))))
 
-(defn- cpr-server
-  ([form]
-   (.println System/out (try-cpr form)))
-  ([prefix form]
-   (.println
-    System/out
-    (let [cstr (try-cpr form)]
-      (str prefix (if (index-of cstr "\n") (str "...\n" cstr) cstr))))))
-
 (defn extract-form [{:keys [code]}] (if (string? code) (read-string code) code))
+(defn fmt-loading-msg [f] (ansi/sgr (str "Loading file... " f) :bold :black))
+(defn fmt-eval-msg [ns form]
+  (format
+    "(%s) %s %s"
+    ns
+    (ansi/sgr "=>" :blue)
+    (let [cstr (try-cpr form)]
+      (if (index-of cstr "\n")
+        (str "...\n" cstr)      ; whitespace formatting for readability
+        cstr))))
 
 (def ^:dynamic *debug* false)
 (def skippable-sym #{'in-ns 'find-ns '*ns*})
@@ -47,14 +48,15 @@
     (recv [this timeout] (.recv transport timeout))
     (send [this resp]
       (when (-> resp :nrepl.middleware.print/keys (contains? :value))
-        (when *debug*
-          (.println System/out "----- Debug -----")
-          (cpr-server "Request: "  (dissoc msg :session :transport))
-          (cpr-server "Response: " (dissoc resp :session)))
-        (when-let [form (extract-form msg)]
-          (when (print-form? form)
-            (cpr-server (str "(" (:ns resp) ")" (ansi/sgr " => " :blue)) form)
-            (cpr-server (:value resp)))))
+        (binding [*out* (java.io.OutputStreamWriter. System/out)]
+          (when *debug*
+            (println "----- Debug -----")
+            (println "Request: "  (try-cpr (dissoc msg :session :transport)))
+            (println "Response: " (try-cpr (dissoc resp :session))))
+          (let [form (extract-form msg)]
+            (when (print-form? form)
+              (println (fmt-eval-msg (:ns resp) form))
+              (println (try-cpr (:value resp)))))))
       (.send transport resp)
       this)))
 
@@ -64,8 +66,8 @@
   (fn [{:keys [op] :as msg}]
     (case op
       "eval" (h (assoc msg :transport (handle-print-eval msg)))
-      "load-file" (do (println (ansi/sgr (str "Loading file... " (:file-name msg)) :bold :black)) (h msg))
-      :else (h msg))))
+      "load-file" (do (println (fmt-loading-msg (:file-name msg))) (h msg))
+      (h msg))))
 
 (set-descriptor! #'print-eval
                  {:requires #{#'wrap-print}
@@ -80,7 +82,6 @@
   *ns*
   (prn (ansi/sgr "Loading file..." :bold :black))
   (extract-form {:code "#(identity %)"}))
-
 
 (comment
   (require '[nrepl.core :as nrepl])
