@@ -4,6 +4,7 @@
    [nrepl.middleware :refer [set-descriptor!]]
    [nrepl.middleware.print :refer [wrap-print]]
    [nrepl.transport :refer [Transport]]
+   [puget.color.ansi :as ansi]
    [puget.printer :as pug]))
 
 (def pug-options
@@ -35,7 +36,7 @@
 (defn- cprint-eval
   [form response]
   (do
-    (unsafe-cprint (str (:ns response) \u001b "[34m => ") form)
+    (unsafe-cprint (str "(" (:ns response) ")" (ansi/sgr " => " :blue)) form)
     (unsafe-cprint (:value response))))
 
 (defn- cprint-debug
@@ -62,12 +63,11 @@
     (recv [this] (.recv transport))
     (recv [this timeout] (.recv transport timeout))
     (send [this response]
-      (when (contains? (:nrepl.middleware.print/keys response) :value)
+      (when (-> response :nrepl.middleware.print/keys (contains? :value))
+        (when *debug* (cprint-debug msg response))
         (when-let [form (extract-form msg)]
-          (when *debug* (unsafe-cprint "Extracted form: " form))
           (when (print-form? form)
-            (cprint-eval form response)))
-        (when *debug* (cprint-debug msg response)))
+            (cprint-eval form response))))
       (.send transport response)
       this)))
 
@@ -75,13 +75,14 @@
   "Middleware to print :code :value from ops that leas to an eval in the repl."
   [handler]
   (fn [{:keys [op] :as msg}]
-    (if (= op "eval")
-      (handler (assoc msg :transport (print-value-transport msg)))
-      (handler msg))))
+    (case op
+      "eval" (handler (assoc msg :transport (print-value-transport msg)))
+      "load-file" (do (println (ansi/sgr (str "Loading file... " (:file-name msg)) :bold :black)) (handler msg))
+      :else (handler msg))))
 
 (set-descriptor! #'print-eval
                  {:requires #{#'wrap-print}
-                  :expects #{"eval"}
+                  :expects #{"eval" "load-file"}
                   :handles {}})
 
 (comment
@@ -89,4 +90,14 @@
   (+ 123 (+ 1 2 (- 4 3)))
   (assoc {:a 1 :b 2} :c 3)
   *ns*
+  (prn (ansi/sgr "Loading file..." :bold :black))
   (extract-form {:code "#(identity %)"}))
+
+
+(comment
+  (require '[nrepl.core :as nrepl])
+  (-> (nrepl/connect :port 54177)
+      (nrepl/client 1000)
+      (nrepl/message {:op "describe"})
+      )
+  )
