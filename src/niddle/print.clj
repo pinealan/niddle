@@ -13,41 +13,24 @@
                   :delimiter [:red]
                   :keyword [:magenta]}})
 
-(def ^:dynamic *debug* false)
-
-(defn try-cpr-str [form]
+(defn try-cpr [form]
   (try
     (pug/cprint-str form pug-options)
     (catch Throwable t
       (str t "\n...eval was successful, but color printing failed."))))
 
-(defn- unsafe-cprint
+(defn- cpr-server
   ([form]
-   (.println System/out (try-cpr-str form)))
+   (.println System/out (try-cpr form)))
   ([prefix form]
    (.println
     System/out
-    (let [cstr (try-cpr-str form)]
-      (str prefix
-           (if (index-of cstr "\n")
-             (str "...\n" cstr)
-             cstr))))))
-
-(defn- cprint-eval
-  [form response]
-  (do
-    (unsafe-cprint (str "(" (:ns response) ")" (ansi/sgr " => " :blue)) form)
-    (unsafe-cprint (:value response))))
-
-(defn- cprint-debug
-  [msg response]
-  (do
-    (.println System/out "----- Debug -----")
-    (unsafe-cprint "Request: "  (dissoc msg :session :transport))
-    (unsafe-cprint "Response: " (dissoc response :session))))
+    (let [cstr (try-cpr form)]
+      (str prefix (if (index-of cstr "\n") (str "...\n" cstr) cstr))))))
 
 (defn extract-form [{:keys [code]}] (if (string? code) (read-string code) code))
 
+(def ^:dynamic *debug* false)
 (def skippable-sym #{'in-ns 'find-ns '*ns*})
 
 (defn print-form? [form]
@@ -56,34 +39,39 @@
       (and (list? form) (->> form flatten (not-any? skippable-sym)))
       (and (-> form symbol? not) (-> form list? not))))
 
-(defn- print-value-transport
+(defn- handle-print-eval
   "Reify transport to catpure eval-ed values for printing"
   [{:keys [transport] :as msg}]
   (reify Transport
     (recv [this] (.recv transport))
     (recv [this timeout] (.recv transport timeout))
-    (send [this response]
-      (when (-> response :nrepl.middleware.print/keys (contains? :value))
-        (when *debug* (cprint-debug msg response))
+    (send [this resp]
+      (when (-> resp :nrepl.middleware.print/keys (contains? :value))
+        (when *debug*
+          (.println System/out "----- Debug -----")
+          (cpr-server "Request: "  (dissoc msg :session :transport))
+          (cpr-server "Response: " (dissoc resp :session)))
         (when-let [form (extract-form msg)]
           (when (print-form? form)
-            (cprint-eval form response))))
-      (.send transport response)
+            (cpr-server (str "(" (:ns resp) ")" (ansi/sgr " => " :blue)) form)
+            (cpr-server (:value resp)))))
+      (.send transport resp)
       this)))
 
 (defn print-eval
   "Middleware to print :code :value from ops that leas to an eval in the repl."
-  [handler]
+  [h]
   (fn [{:keys [op] :as msg}]
     (case op
-      "eval" (handler (assoc msg :transport (print-value-transport msg)))
-      "load-file" (do (println (ansi/sgr (str "Loading file... " (:file-name msg)) :bold :black)) (handler msg))
-      :else (handler msg))))
+      "eval" (h (assoc msg :transport (handle-print-eval msg)))
+      "load-file" (do (println (ansi/sgr (str "Loading file... " (:file-name msg)) :bold :black)) (h msg))
+      :else (h msg))))
 
 (set-descriptor! #'print-eval
                  {:requires #{#'wrap-print}
                   :expects #{"eval" "load-file"}
                   :handles {}})
+
 
 (comment
   (+ 1 2 3)
@@ -98,6 +86,4 @@
   (require '[nrepl.core :as nrepl])
   (-> (nrepl/connect :port 54177)
       (nrepl/client 1000)
-      (nrepl/message {:op "describe"})
-      )
-  )
+      (nrepl/message {:op "describe"})))
