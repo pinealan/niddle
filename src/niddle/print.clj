@@ -19,8 +19,8 @@
     (catch Throwable t
       (str t "\n...eval was successful, but color printing failed."))))
 
-(defn extract-form [{:keys [code]}] (if (string? code) (read-string code) code))
-(defn fmt-loading-msg [f] (ansi/sgr (str "Loading file... " f) :bold :black))
+(defn fmt-grey [s] (ansi/sgr s :bold :black))
+(defn fmt-loading-msg [f] (fmt-grey (str "Loading file... " f)))
 (defn fmt-eval-msg [ns form]
   (format
     "(%s) %s %s"
@@ -28,11 +28,13 @@
     (ansi/sgr "=>" :blue)
     (let [cstr (try-cpr form)]
       (if (index-of cstr "\n")
-        (str "...\n" cstr)      ; whitespace formatting for readability
+        (str (fmt-grey "...\n") cstr (fmt-grey "\n---"))  ; whitespace formatting for readability
         cstr))))
 
 (def ^:dynamic *debug* false)
 (def skippable-sym #{'in-ns 'find-ns '*ns*})
+
+(defn extract-form [{:keys [code]}] (if (string? code) (read-string code) code))
 
 (defn print-form? [form]
   "Skip functions & symbols that are unnecessary outside of interactive REPL"
