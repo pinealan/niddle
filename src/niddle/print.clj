@@ -15,9 +15,15 @@
 
 (defn try-cpr [form]
   (try
-    (pug/cprint-str form pug-options)
+    (try
+      (try
+        (pug/cprint-str form pug-options)
+        (catch Exception e
+          (with-out-str (clojure.pprint/pprint form))))
+      (catch Exception e
+        (pr-str form)))
     (catch Throwable t
-      (str t "\n...eval was successful, but color printing failed."))))
+      (str t "\n...eval was successful, but color/pretty printing failed."))))
 
 (defn fmt-grey [s] (ansi/sgr s :bold :black))
 (defn fmt-loading-msg [f] (fmt-grey (str "Loading file... " f)))
@@ -76,7 +82,6 @@
                   :expects #{"eval" "load-file"}
                   :handles {}})
 
-
 (comment
   (+ 1 2 3)
   (+ 123 (+ 1 2 (- 4 3)))
@@ -87,6 +92,6 @@
 
 (comment
   (require '[nrepl.core :as nrepl])
-  (-> (nrepl/connect :port 54177)
+  (-> (nrepl/connect :port 0)
       (nrepl/client 1000)
       (nrepl/message {:op "describe"})))
