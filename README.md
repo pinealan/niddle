@@ -7,6 +7,8 @@ non-interactively on the cli, but you'd like to keep track of all that has been
 eval-ed on the same CLI. (think [Cursive
 REPL](https://cursive-ide.com/userguide/repl.html))
 
+![demo video](demo.gif)
+
 Colored pretty printing is done with [puget](https://github.com/greglook/puget).
 
 ## Usage
