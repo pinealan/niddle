@@ -27,6 +27,7 @@
 
 (defn fmt-grey [s] (ansi/sgr s :bold :black))
 (defn fmt-loading-msg [f] (fmt-grey (str "Loading file... " f)))
+(defn fmt-testing-msg [v] (fmt-grey (str "Running tests..." v)))
 (defn fmt-eval-msg [ns form]
   (format
     "(%s) %s %s"
@@ -75,6 +76,7 @@
     (case op
       "eval" (h (assoc msg :transport (handle-print-eval msg)))
       "load-file" (do (println (fmt-loading-msg (:file-name msg))) (h msg))
+      "test-var-query" (do (println (fmt-testing-msg (:var-query msg))) (h msg))
       (h msg))))
 
 (set-descriptor! #'print-eval
