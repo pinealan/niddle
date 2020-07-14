@@ -8,7 +8,9 @@
    [puget.printer :as pug]))
 
 (def pug-options
-  {:color-scheme {:number [:yellow]
+  {:coll-limit 10
+   :namespace-maps true
+   :color-scheme {:number [:yellow]
                   :string [:green]
                   :delimiter [:red]
                   :keyword [:magenta]}})
@@ -88,6 +90,9 @@
   (+ 1 2 3)
   (+ 123 (+ 1 2 (- 4 3)))
   (assoc {:a 1 :b 2} :c 3)
+  (assoc {:txn/a 1 :txn/b 2} :c 3)
+  (assoc {:txn/a 1 :txn/b 2} :txn/c 3)
+  [1 2 3 4 5 15 1 2 3 4 5 6 7]
   *ns*
   (prn (ansi/sgr "Loading file..." :bold :black))
   (extract-form {:code "#(identity %)"}))
