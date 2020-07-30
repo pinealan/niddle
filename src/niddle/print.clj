@@ -31,14 +31,7 @@
 (defn fmt-loading-msg [f] (fmt-grey (str "Loading file... " f)))
 (defn fmt-testing-msg [v] (fmt-grey (str "Running tests..." v)))
 (defn fmt-eval-msg [ns form]
-  (format
-    "(%s) %s %s"
-    ns
-    (ansi/sgr "=>" :blue)
-    (let [cstr (try-cpr form)]
-      (if (index-of cstr "\n")
-        (str (fmt-grey "...\n") cstr (fmt-grey "\n---"))  ; whitespace formatting for readability
-        cstr))))
+  (str (fmt-grey "[") (ansi/sgr ns :blue) (fmt-grey "]\n") (try-cpr form)))
 
 (def ^:dynamic *debug* false)
 (def skippable-sym #{'in-ns 'find-ns '*ns*})
@@ -67,7 +60,7 @@
           (let [form (extract-form msg)]
             (when (print-form? form)
               (println (fmt-eval-msg (:ns resp) form))
-              (println (try-cpr (:value resp)))))))
+              (println (str (fmt-grey "=> ") (try-cpr (:value resp))))))))
       (.send transport resp)
       this)))
 
