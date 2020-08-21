@@ -29,14 +29,31 @@
 
 (defn fmt-grey [s] (ansi/sgr s :bold :black))
 
+;; handle-enter + handle-exit, multi method pair
+
 (defmulti handle-enter :op)
+(defmulti handle-exit (fn [msg _] (:op msg)))
+
 (defmethod handle-enter :default [_] nil)
+(defmethod handle-exit :default [_ _] nil)
+
+(def processed-msgs (atom #{}))
+
+;; :op "load-file" + "test-var-query"
 
 (defmethod handle-enter "load-file" [{:keys [file-name]}]
   (println (fmt-grey (str "Loading file... " file-name))))
 
+(defmethod handle-exit "load-file" [{:keys [file-name id] :as msg} _]
+  (when-not (contains? @processed-msgs id)
+    (binding [*out* (java.io.OutputStreamWriter. System/out)]
+      (println (fmt-grey (str "...done " file-name))))
+    (swap! processed-msgs conj id)))
+
 (defmethod handle-enter "test-var-query" [{:keys [var-query]}]
   (println (fmt-grey (str "Running tests..." var-query))))
+
+;; :op "eval"
 
 (def ^:dynamic *debug* false)
 (def skippable-sym #{'in-ns 'find-ns '*ns*})
@@ -56,31 +73,34 @@
 (defmethod handle-enter "eval" [{:keys [code]}]
   (when-let [form (printable-form code)] (println (try-cpr form))))
 
-(defn handle-exit-eval
+(defmethod handle-exit "eval" [{:keys [code] :as msg} resp]
+  (when (-> resp :nrepl.middleware.print/keys (contains? :value))
+    (binding [*out* (java.io.OutputStreamWriter. System/out)]
+      (when *debug*
+        (println "----- Debug -----")
+        (println "Request: "  (try-cpr (dissoc msg :session :transport)))
+        (println "Response: " (try-cpr (dissoc resp :session))))
+      (when-let [form (printable-form code)]
+        (println (str (ansi/sgr (:ns resp) :blue)
+                      (fmt-grey "=> ")
+                      (try-cpr (:value resp))))))))
+
+(defn Interceptor
   "Reify transport to catpure eval-ed values for printing"
-  [{:keys [transport code] :as msg}]
+  [{:keys [transport] :as msg}]
   (reify Transport
     (recv [this] (.recv transport))
     (recv [this timeout] (.recv transport timeout))
     (send [this resp]
-      (when (-> resp :nrepl.middleware.print/keys (contains? :value))
-        (binding [*out* (java.io.OutputStreamWriter. System/out)]
-          (when *debug*
-            (println "----- Debug -----")
-            (println "Request: "  (try-cpr (dissoc msg :session :transport)))
-            (println "Response: " (try-cpr (dissoc resp :session))))
-          (when-let [form (printable-form code)]
-            (println (str (ansi/sgr (:ns resp) :blue)
-                          (fmt-grey "=> ")
-                          (try-cpr (:value resp)))))))
+      (handle-exit msg resp)
       (.send transport resp)
       this)))
 
 (defn niddle-mw [h]
-  "Middleware to print :code :value from ops that leas to an eval in the repl."
+  "Middleware to print :code :value from ops that leads to an eval in the repl."
   (fn [msg]
     (handle-enter msg)
-    (h (assoc msg :transport (handle-exit-eval msg)))))
+    (h (assoc msg :transport (Interceptor msg)))))
 
 (set-descriptor! #'niddle-mw
                  {:requires #{#'wrap-print}
