@@ -39,16 +39,19 @@
 
 (def processed-msgs (atom #{}))
 
-;; :op "load-file" + "test-var-query"
+;; :op "load-file"
 
 (defmethod handle-enter "load-file" [{:keys [file-name]}]
-  (println (fmt-grey (str "Loading file... " file-name))))
+  (print (fmt-grey (str "Loading " file-name "...")))
+  ;; flush in-case *out* has lazy logic to only flush on newline
+  (flush))
 
 (defmethod handle-exit "load-file" [{:keys [file-name id] :as msg} _]
   (when-not (contains? @processed-msgs id)
-    (binding [*out* (java.io.OutputStreamWriter. System/out)]
-      (println (fmt-grey (str "...done " file-name))))
+    (println (fmt-grey "done"))
     (swap! processed-msgs conj id)))
+
+;; :op "test-var-query"
 
 (defmethod handle-enter "test-var-query" [{:keys [var-query]}]
   (println (fmt-grey (str "Running tests..." var-query))))
@@ -58,7 +61,7 @@
 (def ^:dynamic *debug* false)
 (def skippable-sym #{'in-ns 'find-ns '*ns*})
 
-(defn extract-form [code] (if (string? code) (read-string code) code))
+(defn read-form [code] (if (string? code) (read-string code) code))
 
 (defn print-form? [form]
   "Skip functions & symbols that are unnecessary outside of interactive REPL"
@@ -67,23 +70,19 @@
       (and (-> form symbol? not) (-> form list? not))))
 
 (defn printable-form [code]
-  (let [form (extract-form code)]
+  (let [form (read-form code)]
     (when (print-form? form) form)))
 
 (defmethod handle-enter "eval" [{:keys [code]}]
   (when-let [form (printable-form code)] (println (try-cpr form))))
 
-(defmethod handle-exit "eval" [{:keys [code] :as msg} resp]
-  (when (-> resp :nrepl.middleware.print/keys (contains? :value))
-    (binding [*out* (java.io.OutputStreamWriter. System/out)]
-      (when *debug*
-        (println "----- Debug -----")
-        (println "Request: "  (try-cpr (dissoc msg :session :transport)))
-        (println "Response: " (try-cpr (dissoc resp :session))))
-      (when-let [form (printable-form code)]
-        (println (str (ansi/sgr (:ns resp) :blue)
-                      (fmt-grey "=> ")
-                      (try-cpr (:value resp))))))))
+(defmethod handle-exit "eval" [{:keys [code id] :as msg} resp]
+  (when (and (-> @processed-msgs (contains? id) not)
+             (-> resp :nrepl.middleware.print/keys (contains? :value)))
+    (when-let [form (printable-form code)]
+      (println (str (ansi/sgr (:ns resp) :blue)
+                    (fmt-grey "=> ")
+                    (try-cpr (:value resp)))))))
 
 (defn Interceptor
   "Reify transport to catpure eval-ed values for printing"
@@ -92,7 +91,12 @@
     (recv [this] (.recv transport))
     (recv [this timeout] (.recv transport timeout))
     (send [this resp]
-      (handle-exit msg resp)
+      (binding [*out* (java.io.OutputStreamWriter. System/out)]
+        (when *debug*
+          (println "----- Debug -----")
+          (println "Request: "  (try-cpr (dissoc msg :session :transport)))
+          (println "Response: " (try-cpr (dissoc resp :session))))
+        (handle-exit msg resp))
       (.send transport resp)
       this)))
 
@@ -116,7 +120,7 @@
   [1 2 3 4 5 15 1 2 3 4 5 6 7]
   *ns*
   (prn (ansi/sgr "Loading file..." :bold :black))
-  (extract-form {:code "#(identity %)"}))
+  (read-form {:code "#(identity %)"}))
 
 (comment
   (require '[nrepl.core :as nrepl])

@@ -3,16 +3,16 @@
    [clojure.test :refer :all]
    [niddle.print :refer :all]))
 
-(deftest extract-form-test
+(deftest read-form-test
   (testing "Extracting string encoded forms"
-    (are [s expected] (= (extract-form {:code s}) expected)
+    (are [s expected] (= (read-form s) expected)
       "3" 3
       ":key" :key
       "(identity 1)" '(identity 1)))
   (testing "Return decoded form as is"
-    (are [form] (= (extract-form {:code form}) form)
+    (are [form] (= (read-form form) form)
       1 :key [1 2 3] '(identity 1)))
-  (is (extract-form {:code "#(identity %)"})
+  (is (read-form "#(identity %)")
       "Can extract forms with reader macro"))
 
 (deftest print-form?-test
