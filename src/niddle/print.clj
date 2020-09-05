@@ -28,6 +28,18 @@
       (str t "\n...eval was successful, but color/pretty printing failed."))))
 
 (defn fmt-grey [s] (ansi/sgr s :bold :black))
+(defn fmt-red [s] (ansi/sgr s :red))
+(defn fmt-blue [s] (ansi/sgr s :blue))
+
+(defn fmt-multiline [cstr]
+  (if (index-of cstr "\n") (str "\n" cstr) cstr))
+
+(defn fmt-resp
+  "Colored string formatting for :op eval result. Supports two arities.
+   2-arity accepts namespace string and clojure form
+   1-arity accepts exception message string"
+  ([ex] (str (fmt-grey "=> ") (-> ex fmt-red fmt-multiline)))
+  ([ns form] (str (fmt-blue ns) (fmt-grey "=> ") (-> form try-cpr fmt-multiline))))
 
 ;; handle-enter + handle-exit, multi method pair
 
@@ -77,12 +89,14 @@
   (when-let [form (printable-form code)] (println (try-cpr form))))
 
 (defmethod handle-exit "eval" [{:keys [code id] :as msg} resp]
-  (when (and (-> @processed-msgs (contains? id) not)
-             (-> resp :nrepl.middleware.print/keys (contains? :value)))
-    (when-let [form (printable-form code)]
-      (println (str (ansi/sgr (:ns resp) :blue)
-                    (fmt-grey "=> ")
-                    (try-cpr (:value resp)))))))
+  (when (-> @processed-msgs (contains? id) not)
+    (when (contains? (:nrepl.middleware.print/keys resp) :value)
+      (when-let [form (printable-form code)]
+        (println (fmt-resp (:ns resp) (:value resp)))))
+    (when-let [ex (:err resp)]
+      (println (fmt-resp ex)))))
+
+;; Scaffolding to hook into nREPL, op agnostic
 
 (defn Interceptor
   "Reify transport to catpure eval-ed values for printing"
