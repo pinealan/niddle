@@ -60,8 +60,7 @@
 
 (defmethod handle-exit "load-file" [{:keys [file-name id] :as msg} _]
   (when-not (contains? @processed-msgs id)
-    (println (fmt-grey "done"))
-    (swap! processed-msgs conj id)))
+    (println (fmt-grey "done"))))
 
 ;; :op "test-var-query"
 
@@ -100,7 +99,7 @@
 
 (defn Interceptor
   "Reify transport to catpure eval-ed values for printing"
-  [{:keys [transport] :as msg}]
+  [{:keys [transport id] :as msg}]
   (reify Transport
     (recv [this] (.recv transport))
     (recv [this timeout] (.recv transport timeout))
@@ -108,15 +107,18 @@
       (binding [*out* (java.io.OutputStreamWriter. System/out)]
         (when *debug*
           (println "----- Debug -----")
-          (println "Request: "  (try-cpr (dissoc msg :session :transport)))
-          (println "Response: " (try-cpr (dissoc resp :session))))
-        (handle-exit msg resp))
+          (println "Request: \n" (try-cpr (dissoc msg :session :transport)))
+          (println "Response: \n" (try-cpr (dissoc resp :session))))
+        (handle-exit msg resp)
+        (swap! processed-msgs conj id))
       (.send transport resp)
       this)))
 
 (defn niddle-mw [h]
   "Middleware to print :code :value from ops that leads to an eval in the repl."
   (fn [msg]
+    (when (and (not (contains? @processed-msgs (:id msg))) *debug*)
+      (println ":op " (:op msg)))
     (handle-enter msg)
     (h (assoc msg :transport (Interceptor msg)))))
 
@@ -126,18 +128,23 @@
                   :handles {}})
 
 (comment
-  (+ 1 2 3)
   (+ 123 (+ 1 2 (- 4 3)))
   (assoc {:a 1 :b 2} :c 3)
-  (assoc {:txn/a 1 :txn/b 2} :c 3)
   (assoc {:txn/a 1 :txn/b 2} :txn/c 3)
   [1 2 3 4 5 15 1 2 3 4 5 6 7]
-  *ns*
-  (prn (ansi/sgr "Loading file..." :bold :black))
-  (read-form {:code "#(identity %)"}))
+  *ns*)
 
 (comment
-  (require '[nrepl.core :as nrepl])
-  (-> (nrepl/connect :port 0)
+  (require '[nrepl.core :as nrepl]
+           '[clojure.java.io :as io])
+  (-> (nrepl/connect :port (-> ".nrepl-port"
+                               io/file slurp Integer/parseInt))
       (nrepl/client 1000)
-      (nrepl/message {:op "describe"})))
+      (nrepl/message {:op "describe"})
+      first
+      :ops))
+
+(comment
+  (require '[iced.nrepl.refactor.thread :as irt])
+  (irt/iced-refactor-thread-first {:code "(assoc {:txn/a 1 :txn/b 2} :c 3)"})
+  (irt/expand-sexp '-> (assoc {:txn/a 1 :txn/b 2} :c 3)))
