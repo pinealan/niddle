@@ -15,17 +15,20 @@
                   :delimiter [:red]
                   :keyword [:magenta]}})
 
+(defmacro ->try
+  [expr & catches]
+  (loop [expr expr, catches catches]
+    (if catches
+      (recur `(try ~expr ~(first catches))
+             (next catches))
+      expr)))
+
 (defn try-cpr [form]
-  (try
-    (try
-      (try
-        (pug/cprint-str form pug-options)
-        (catch Exception e
-          (with-out-str (clojure.pprint/pprint form))))
-      (catch Exception e
-        (pr-str form)))
-    (catch Throwable t
-      (str t "\n...eval was successful, but color/pretty printing failed."))))
+  (->try (pug/cprint-str form pug-options)
+         (catch Exception e (with-out-str (clojure.pprint/pprint form)))
+         (catch Exception e (pr-str form))
+         (catch Throwable t
+           (str t "\n...eval succeed but pretty printing failed."))))
 
 (defn fmt-grey [s] (ansi/sgr s :bold :black))
 (defn fmt-red [s] (ansi/sgr s :red))
