@@ -26,9 +26,9 @@
     (is (not (print-form? '(find-ns (quote niddle.print)))))
     (is (not (print-form? '(if (find-ns (quote niddle.print)) :ok :ng))))))
 
-(deftest ->try-test
+(deftest try->-test
   (is (= (macroexpand-1
-          '(->try (+ 1 2 3)
+          '(try-> (+ 1 2 3)
                   (catch Exception _ (do-something))
                   (catch Exception e (do-another))
                   (catch Throwable t (last-try t))))

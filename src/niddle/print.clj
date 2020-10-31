@@ -15,7 +15,7 @@
                   :delimiter [:red]
                   :keyword [:magenta]}})
 
-(defmacro ->try
+(defmacro try->
   [expr & catches]
   (loop [expr expr, catches catches]
     (if catches
@@ -24,7 +24,7 @@
       expr)))
 
 (defn try-cpr [form]
-  (->try (pug/cprint-str form pug-options)
+  (try-> (pug/cprint-str form pug-options)
          (catch Exception e (with-out-str (clojure.pprint/pprint form)))
          (catch Exception e (pr-str form))
          (catch Throwable t
