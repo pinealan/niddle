@@ -1,6 +1,7 @@
 (ns niddle.print
   (:require
    [clojure.string :refer [index-of]]
+   [clojure.pprint]
    [nrepl.middleware :refer [set-descriptor!]]
    [nrepl.middleware.print :refer [wrap-print]]
    [nrepl.transport :refer [Transport]]
