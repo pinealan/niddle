@@ -18,7 +18,7 @@ Colored pretty printing is done with [puget](https://github.com/greglook/puget).
  :aliases
  {:niddle {:extra-deps {org.clojure/clojure {:mvn/version "1.10.1"}
                         niddle {:git/url "https://github.com/pinealan/niddle.git" }}
-           :main-opts ["-m" "nrepl.cmdline" "--middleware" "[niddle.print/print-eval]"]}
+           :main-opts ["-m" "nrepl.cmdline" "--middleware" "[niddle.print/niddle-mw]"]}
 ```
 
 ## Motivation
