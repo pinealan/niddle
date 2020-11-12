@@ -76,7 +76,7 @@
 (def ^:dynamic *debug* false)
 (def skippable-sym #{'in-ns 'find-ns '*ns*})
 
-(defn read-form [code] (if (string? code) (read-string code) code))
+(defn read-form [code] (if (string? code) (read-string {:read-cond :allow} code) code))
 
 (defn print-form? [form]
   "Skip functions & symbols that are unnecessary outside of interactive REPL"
