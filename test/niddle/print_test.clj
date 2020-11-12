@@ -13,7 +13,9 @@
     (are [form] (= (read-form form) form)
       1 :key [1 2 3] '(identity 1)))
   (is (read-form "#(identity %)")
-      "Can extract forms with reader macro"))
+      "Can extract forms with reader macro")
+  (is (= :yep (read-form "#?(:clj :yep :cljs :nope)"))
+      "Can extract forms with reader conditional"))
 
 (deftest print-form?-test
   (testing "Forms that should be printed"
