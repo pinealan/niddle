@@ -76,7 +76,10 @@
 (def ^:dynamic *debug* false)
 (def skippable-sym #{'in-ns 'find-ns '*ns*})
 
-(defn read-form [code] (if (string? code) (read-string {:read-cond :allow} code) code))
+(defn read-form [code]
+  (if (and (string? code) (< 0 (count code)))
+    (try (read-string {:read-cond :allow} code) (catch Exception e code))
+    code))
 
 (defn print-form? [form]
   "Skip functions & symbols that are unnecessary outside of interactive REPL"
@@ -113,7 +116,9 @@
           (println "----- Debug -----")
           (println "Request: \n" (try-cpr (dissoc msg :session :transport)))
           (println "Response: \n" (try-cpr (dissoc resp :session))))
-        (handle-exit msg resp)
+        (try
+          (handle-exit msg resp)
+          (catch Exception e (str "caught exception: " (.getMessage e))))
         (swap! processed-msgs conj id))
       (.send transport resp)
       this)))
@@ -123,7 +128,9 @@
   (fn [msg]
     (when (and (not (contains? @processed-msgs (:id msg))) *debug*)
       (println ":op " (:op msg)))
-    (handle-enter msg)
+    (try
+      (handle-enter msg)
+      (catch Exception e (str "caught exception: " (.getMessage e))))
     (h (assoc msg :transport (Interceptor msg)))))
 
 (set-descriptor! #'niddle-mw
