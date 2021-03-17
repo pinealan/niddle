@@ -118,7 +118,8 @@
           (println "Response: \n" (try-cpr (dissoc resp :session))))
         (try
           (handle-exit msg resp)
-          (catch Exception e (str "caught exception: " (.getMessage e))))
+          (catch Exception e
+            (println (str "caught exception: " (.getMessage e)))))
         (swap! processed-msgs conj id))
       (.send transport resp)
       this)))
@@ -126,24 +127,18 @@
 (defn niddle-mw [h]
   "Middleware to print :code :value from ops that leads to an eval in the repl."
   (fn [msg]
-    (when (and (not (contains? @processed-msgs (:id msg))) *debug*)
+    (when (and *debug* (not (contains? @processed-msgs (:id msg))))
       (println ":op " (:op msg)))
     (try
       (handle-enter msg)
-      (catch Exception e (str "caught exception: " (.getMessage e))))
+      (catch Exception e
+        (println (str "caught exception: " (.getMessage e)))))
     (h (assoc msg :transport (Interceptor msg)))))
 
 (set-descriptor! #'niddle-mw
                  {:requires #{#'wrap-print}
                   :expects #{"eval" "load-file"}
                   :handles {}})
-
-(comment
-  (+ 123 (+ 1 2 (- 4 3)))
-  (assoc {:a 1 :b 2} :c 3)
-  (assoc {:txn/a 1 :txn/b 2} :txn/c 3)
-  [1 2 3 4 5 15 1 2 3 4 5 6 7]
-  *ns*)
 
 (comment
   (require '[nrepl.core :as nrepl]
