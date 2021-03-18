@@ -38,12 +38,23 @@
 (defn fmt-multiline [cstr]
   (if (index-of cstr "\n") (str "\n" cstr) cstr))
 
+(def divider (fmt-grey (apply str "\n" (repeat 30 "─"))))
+
 (defn fmt-resp
   "Colored string formatting for :op eval result. Supports two arities.
-   2-arity accepts namespace string and clojure form
-   1-arity accepts exception message string"
-  ([ex] (str (fmt-grey "=> ") (-> ex fmt-red fmt-multiline)))
-  ([ns form] (str (fmt-blue ns) (fmt-grey "=> ") (-> form try-cpr fmt-multiline))))
+   1-arity accepts exception message string
+   2-arity accepts namespace string and clojure form"
+
+  ([ex]
+   (str (fmt-grey "=> ")
+        (-> ex fmt-red fmt-multiline)
+        divider))
+
+  ([ns form]
+   (str (fmt-blue ns)
+        (fmt-grey "=> ")
+        (-> form try-cpr fmt-multiline)
+        divider)))
 
 ;; handle-enter + handle-exit, multi method pair
 
